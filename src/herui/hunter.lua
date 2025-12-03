@@ -9,8 +9,8 @@ HunterUI.__index = HunterUI
 
 -- 保存 Hunter UI 位置的设置文件名（不带路径）
 local POSITION_FILE = "herui_position"
-local POSITION_REQUIRE_PATH = "~" .. POSITION_FILE         -- Require 时使用 _bastion.lua 中的 ~ 规则
-local POSITION_FILE_PATH = "scripts/bastion/" .. POSITION_FILE .. ".lua"  -- 保存文件的完整路径
+local POSITION_REQUIRE_PATH = "~src/herui/" .. POSITION_FILE  -- Require 时使用 _bastion.lua 中的 ~ 规则
+local POSITION_FILE_PATH = "scripts/bastion/src/herui/" .. POSITION_FILE .. ".lua"  -- 保存文件的完整路径
 
 local function trim(str)
     if not str then return str end
