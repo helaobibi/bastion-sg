@@ -335,6 +335,39 @@ function HunterUI:GetState(stateName)
 end
 
 -- =============================================
+-- Export API
+-- =============================================
+---@return table
+function HunterUI:BuildExports()
+    local exports = {
+        BlackArrow = self:GetState("blackArrow"),
+        ExplosiveTrap = self:GetState("explosiveTrap"),
+        Normal = self:GetState("normal"),
+        Simple = self:GetState("simple"),
+        AimedShot = self:GetState("aimedShot"),
+        MultiShot = self:GetState("multiShot"),
+        PetAttack = self:GetState("petAttack"),
+        PetFollow = self:GetState("petFollow"),
+        ViperSting = self:GetState("viperSting"),
+        AOE = function() return self:HERUIAOE() end,
+        AOEAuto = function() return self:HERUIAOEAuto() end,
+        AutoTarget = self:GetState("autoTarget"),
+        Growl = self:GetState("growl")
+    }
+
+    -- 统一入口，方便按名字取状态
+    function exports:State(name)
+        local getter = self[name]
+        if getter then
+            return getter()
+        end
+        return nil
+    end
+
+    return exports
+end
+
+-- =============================================
 -- Special AOE State Getters
 -- =============================================
 function HunterUI:HERUIAOE()
@@ -352,22 +385,12 @@ function HunterUI:__tostring()
 end
 
 -- =============================================
--- Initialize & Global API Registration
+-- Initialize & API Registration
 -- =============================================
 local hunterUI = HunterUI:New()
 if hunterUI then
-    _G.HERUIBlackArrow    = hunterUI:GetState("blackArrow")
-    _G.HERUIExplosiveTrap = hunterUI:GetState("explosiveTrap")
-    _G.HERUINormal        = hunterUI:GetState("normal")
-    _G.HERUISimple        = hunterUI:GetState("simple")
-    _G.HERUIAimedShot     = hunterUI:GetState("aimedShot")
-    _G.HERUIMultiShot     = hunterUI:GetState("multiShot")
-    _G.HERUIPetAttack     = hunterUI:GetState("petAttack")
-    _G.HERUIPetFollow     = hunterUI:GetState("petFollow")
-    _G.HERUIViperSting    = hunterUI:GetState("viperSting")
-    _G.HERUIAOE           = function() return hunterUI:HERUIAOE() end
-    _G.HERUIAOEAuto       = function() return hunterUI:HERUIAOEAuto() end
-    _G.HERUIAutoTarget    = hunterUI:GetState("autoTarget")
-    _G.HERUIGrowl         = hunterUI:GetState("growl")
+    Bastion.Globals = Bastion.Globals or {}
+    Bastion.Globals.HERUI = hunterUI:BuildExports()
+    Bastion:Debug("HERUI exports registered to Bastion.Globals")
     print("|cff00ff00[HERUI]|r Hunter 模块已加载")
 end

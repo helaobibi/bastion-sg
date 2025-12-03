@@ -8,6 +8,12 @@
 - `scripts/` hosts example and work-in-progress modules (e.g., `HunterModule.lua`); use this for quick experiments before moving stable code into `src/`.
 - `README.md` is the landing page—update it when adding major features or setup changes.
 
+## Loading & Module System
+- `_bastion.lua` 定义了路径前缀：`@` 会从 `scripts/bastion/scripts/` 加载，`~` 会从 `scripts/bastion/` 加载；`Bastion.require("ClassName")` 会自动寻找 `src/ClassName/ClassName.lua`。
+- 引导过程会执行 `Load("@Libraries/")`、`Load("@Modules/")`、`Load("@")`，会把对应目录下的所有 `.lua/.luac` 按文件名 `require`；实验脚本按需放在 `scripts/Modules/` 或 `scripts/`，命名用 CamelCase。
+- 模块用 `Bastion.Module:New(name)` 创建后默认 `enabled=false`，注册前应显式 `:Enable()`（或设置 `enabled = true`），否则主循环不会执行；`/bastion module <name>` 使用实例上的 `name` 进行开关。
+- 主 Ticker 每 0.1 秒刷新战斗状态、`ObjectManager:Refresh()` 并遍历模块 `:Tick()`；新逻辑要避免重计算，优先用 `Cacheable/Refreshable` 或一次取值多次复用。
+
 ## Build, Test, and Development Commands
 - No build step is required; the addon runs directly from this directory inside your WoW installation.
 - Quick syntax scan (Lua 5.1-friendly): `find src -name '*.lua' -print0 | xargs -0 -n1 lua -p`.
@@ -19,6 +25,12 @@
 - Files: descriptive CamelCase matching the class/module (e.g., `UnitManager`, `SpellBook`). Avoid spaces in filenames.
 - Functions: use verb-based names (`Create`, `Update`, `HandleEvent`); tables that act like classes use PascalCase.
 - Keep side effects isolated; favor small helpers in `Module/` or `Library/` over copy-pasting logic.
+
+## UI & Commands
+- `src/herui/hunter.lua` 在初始化时注册 `/hunter` 命令并暴露 `HERUINormal/HERUIAOE/HERUISimple/HERUIAutoTarget/HERUIPetAttack/HERUIPetFollow/HERUIGrowl` 等全局函数；`scripts/HunterModule.lua` 直接依赖这些名字，新增/修改状态时必须同步更新全局导出。
+- Slash 命令通过 `Bastion.Command:New('prefix')` 与 `:Register` 定义，当前已有 `/bastion`（debug、module、mplus、draw 等）和 `/hunter`，避免前缀冲突并复用该封装。
+- UI 位置/图标会通过 `WriteFile` 持久化到 `src/StatusFrame/status_frame_position.lua`、`src/StatusFrame/status_frame_icon.lua` 与 `src/herui/herui_position.lua`，必须保持 `return { ... }` 格式和现有路径；移动或修改 UI 时记得兼容这些文件。
+- `DrawLine` 默认在引导时调用 `:SetupDefaultSync()`，使用 `/bastion draw` 控制开关；如需调整样式请用 `SetConfig/SetColor/SetWidth/SetAlpha` 而不是直接改内部 `draw`。
 
 ## Testing Guidelines
 - There are no automated tests; validate changes in-game. Reproduce scenarios for rotations, aura handling, and cache updates.

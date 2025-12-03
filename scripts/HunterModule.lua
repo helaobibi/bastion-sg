@@ -67,6 +67,29 @@ local BestTarget = Bastion.UnitManager:CreateCustomUnit('besttarget', function()
     return bestTarget or Bastion.UnitManager:Get('none')
 end)
 
+-- 通过 Bastion.Globals.HERUI 读取 UI 状态，避免使用全局函数污染环境
+local function createUIAccessor(name, default)
+    return function()
+        local api = Bastion.Globals and Bastion.Globals.HERUI
+        if api and api[name] then
+            return api[name]()
+        end
+        return default
+    end
+end
+
+local HERUI = {
+    PetAttack = createUIAccessor("PetAttack", true),
+    PetFollow = createUIAccessor("PetFollow", false),
+    Growl = createUIAccessor("Growl", true),
+    ViperSting = createUIAccessor("ViperSting", false),
+    AutoTarget = createUIAccessor("AutoTarget", true),
+    AOE = createUIAccessor("AOE", false),
+    AOEAuto = createUIAccessor("AOEAuto", false),
+    Normal = createUIAccessor("Normal", true),
+    Simple = createUIAccessor("Simple", false)
+}
+
 -- 选择目标
 local function CheckAndSetTarget()
     if not Target:Exists() or Target:IsFriendly() or not Target:IsAlive() then
@@ -144,7 +167,7 @@ PetControlAPL:AddAction("PetAttack", function()
     if Pet:Exists() and Pet:IsAlive()
         and Target:Exists()
         and Target:IsAlive()
-        and HERUIPetAttack()
+        and HERUI.PetAttack()
         and (not PetTarget:Exists() or not PetTarget:IsUnit(Target)) then
         PetAttack()
         return true
@@ -156,8 +179,8 @@ end)
 PetControlAPL:AddAction("PetFollow", function()
     if Pet:Exists() and Pet:IsAlive()
         and PetTarget:Exists()
-        and HERUIPetFollow() then
-        -- and (HERUIPetFollow() or Pet:GetHP() < 75) then
+        and HERUI.PetFollow() then
+        -- and (HERUI.PetFollow() or Pet:GetHP() < 75) then
         PetFollow()
         return true
     end
@@ -181,11 +204,11 @@ PetControlAPL:AddSpell(
 PetControlAPL:AddSpell(
     Growl:CastableIf(function(self)
         return Pet:Exists()
-            and Pet:IsAlive()
-            and Target:Exists()
-            and Target:IsAlive()
-            and Player:IsAffectingCombat()
-            and HERUIGrowl()
+        and Pet:IsAlive()
+        and Target:Exists()
+        and Target:IsAlive()
+        and Player:IsAffectingCombat()
+            and HERUI.Growl()
             and not self:IsOnCooldown()
             and Pet:GetPower() >= 15
     end):SetTarget(Target)
@@ -368,24 +391,24 @@ HunterModule:Sync(function()
     end
 
     -- 强制蝰蛇模式
-    if HERUIViperSting() then
+    if HERUI.ViperSting() then
         ResourceAPL2:Execute()
     end
-    if not HERUIViperSting() then
+    if not HERUI.ViperSting() then
         ResourceAPL:Execute()
     end
 
     -- 战斗中切目标
-    if Player:IsAffectingCombat() and HERUIAutoTarget() then
+    if Player:IsAffectingCombat() and HERUI.AutoTarget() then
         CheckAndSetTarget()
     end
-    if HERUIAOE() then
+    if HERUI.AOE() then
         AoEAPL:Execute()
     end
-    if HERUINormal() then
+    if HERUI.Normal() then
         DefaultAPL:Execute()
     end
-    if HERUISimple() then
+    if HERUI.Simple() then
         DefaultSPAPL:Execute()
     end
 end)
