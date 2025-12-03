@@ -9,6 +9,8 @@ HunterUI.__index = HunterUI
 
 -- 保存 Hunter UI 位置的设置文件名（不带路径）
 local POSITION_FILE = "herui_position"
+local POSITION_REQUIRE_PATH = "~" .. POSITION_FILE         -- Require 时使用 _bastion.lua 中的 ~ 规则
+local POSITION_FILE_PATH = "scripts/bastion/" .. POSITION_FILE .. ".lua"  -- 保存文件的完整路径
 
 local function trim(str)
     if not str then return str end
@@ -20,9 +22,17 @@ local function HERUI_LoadSavedPosition()
     -- 确保表存在
     HERUISettings = HERUISettings or {}
 
+    if Bastion and Bastion.Debug then
+        Bastion:Debug("HERUI load position from:", POSITION_FILE_PATH)
+    end
+
     -- 用 pcall 防止 require 失败报错
     local ok, result = pcall(function()
-        return require(POSITION_FILE)   -- 这里会执行 herui_position.lua 里的 return { ... }
+        -- 使用 Bastion:Require 走 ~ 路径，确保从 scripts/bastion/ 读取
+        if Bastion and Bastion.Require then
+            return Bastion:Require(POSITION_REQUIRE_PATH)
+        end
+        return require(POSITION_FILE)   -- 退化为普通 require，保持兼容
     end)
 
     if ok and type(result) == "table" then
@@ -33,6 +43,9 @@ local function HERUI_LoadSavedPosition()
             x = result.x or 0,
             y = result.y or 0,
         }
+        if Bastion and Bastion.Debug then
+            Bastion:Debug("HERUI position load success:", HERUISettings.framePosition.point, HERUISettings.framePosition.relativePoint, HERUISettings.framePosition.x, HERUISettings.framePosition.y)
+        end
     else
         -- 载入失败时静默忽略，使用默认 CENTER 位置
         if not ok and Bastion and Bastion.Debug then
@@ -170,11 +183,11 @@ return {
 }
 ]], point, relativePoint, x, y)
 
-        -- 写入 herui_position.lua，不带路径，和 /dumpspells 一样
-        WriteFile(POSITION_FILE .. ".lua", code, false)
+        -- 写入 scripts/bastion/herui_position.lua，使用 ~ 路径规则
+        local saved = WriteFile(POSITION_FILE_PATH, code, false)
 
         if Bastion and Bastion.Debug then
-            Bastion:Debug("HERUI position saved:", point, relativePoint, x, y)
+            Bastion:Debug("HERUI position saved:", point, relativePoint, x, y, "write ok:", saved)
         end
     end)
 end
