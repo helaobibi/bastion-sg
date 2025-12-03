@@ -1,3 +1,5 @@
+# Always respond in Chinese-simplified.
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization
@@ -27,4 +29,3 @@
 - Commits: short imperative subjects ("Add hunter focus drain check"); include scope when helpful (`UnitManager: ...`). Group related Lua changes together.
 - Before opening a PR: ensure `/reload` passes without Lua errors and update `README.md` if behavior or setup changes.
 - PR description: summarize intent, list manual test scenarios (character, spec, encounter), and link any tracked issues or forum threads. Add screenshots of UI elements if visuals change.
-## CAlways respond in Chinese-simplified.
