@@ -38,6 +38,7 @@ function HunterUI:New()
     
     -- Initialize frame
     self:CreateMainFrame()
+    self:LoadPosition()
     self:CreateButtons()
     self:UpdateStates()
     self:RegisterSlashCommands()
@@ -93,7 +94,45 @@ function HunterUI:CreateMainFrame()
     self.frame:EnableMouse(true)
     self.frame:RegisterForDrag("LeftButton")
     self.frame:SetScript("OnDragStart", self.frame.StartMoving)
-    self.frame:SetScript("OnDragStop", self.frame.StopMovingOrSizing)
+    self.frame:SetScript("OnDragStop", function(frame)
+        frame:StopMovingOrSizing()
+        self:SavePosition()
+    end)
+end
+
+---@return nil
+function HunterUI:SavePosition()
+    if not self.frame then
+        return
+    end
+
+    local point, relativeTo, relativePoint, xOfs, yOfs = self.frame:GetPoint()
+    local relativeName = relativeTo and relativeTo:GetName() or "UIParent"
+
+    local data = string.format(
+        "return { point = '%s', relative = '%s', relativePoint = '%s', x = %f, y = %f }",
+        point,
+        relativeName,
+        relativePoint,
+        xOfs,
+        yOfs
+    )
+
+    WriteFile('bastion-hunter-ui-position.lua', data, false)
+end
+
+---@return nil
+function HunterUI:LoadPosition()
+    local ok, saved = pcall(function()
+        return Bastion:Require('bastion-hunter-ui-position')
+    end)
+    if not ok or not saved then
+        return
+    end
+
+    self.frame:ClearAllPoints()
+    local relativeFrame = _G[saved.relative] or UIParent
+    self.frame:SetPoint(saved.point or "CENTER", relativeFrame, saved.relativePoint or saved.point or "CENTER", saved.x or 0, saved.y or 0)
 end
 
 ---@param name string
