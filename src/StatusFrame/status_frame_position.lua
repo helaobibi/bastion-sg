@@ -1,7 +1,7 @@
 return {
-    point = "LEFT",
+    point = "CENTER",
     relative = "UIParent",
-    relativePoint = "LEFT",
-    x = 303.936371,
-    y = 160.825562,
+    relativePoint = "CENTER",
+    x = -416.698639,
+    y = 257.333435,
 }
