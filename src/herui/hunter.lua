@@ -88,12 +88,24 @@ end
 function HunterUI:CreateMainFrame()
     self.frame = CreateFrame("Frame", "MainFrame", UIParent)
     self.frame:SetSize(420, 90)
-    self.frame:SetPoint("CENTER")
+    HERUISettings = HERUISettings or {}
+    local savedPosition = HERUISettings.framePosition or { point = "CENTER", relativePoint = "CENTER", x = 0, y = 0 }
+
+    self.frame:SetPoint(savedPosition.point, UIParent, savedPosition.relativePoint, savedPosition.x, savedPosition.y)
     self.frame:SetMovable(true)
     self.frame:EnableMouse(true)
     self.frame:RegisterForDrag("LeftButton")
     self.frame:SetScript("OnDragStart", self.frame.StartMoving)
-    self.frame:SetScript("OnDragStop", self.frame.StopMovingOrSizing)
+    self.frame:SetScript("OnDragStop", function(frame)
+        frame:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = frame:GetPoint()
+        HERUISettings.framePosition = {
+            point = point,
+            relativePoint = relativePoint,
+            x = x,
+            y = y
+        }
+    end)
 end
 
 ---@param name string
