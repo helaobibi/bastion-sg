@@ -14,6 +14,13 @@ local DEFAULT_CONFIG = {
     disabledColor = { r = 0.4, g = 0.4, b = 0.4, a = 0.8 }
 }
 
+local ICON_FILE = "status_frame_icon"
+local ICON_REQUIRE_PATH = "~src/StatusFrame/" .. ICON_FILE
+local ICON_FILE_PATH = "scripts/bastion/src/StatusFrame/" .. ICON_FILE .. ".lua"
+local POSITION_FILE = "status_frame_position"
+local POSITION_REQUIRE_PATH = "~src/StatusFrame/" .. POSITION_FILE
+local POSITION_FILE_PATH = "scripts/bastion/src/StatusFrame/" .. POSITION_FILE .. ".lua"
+
 ---Create a deep copy so shared defaults are never mutated
 ---@param value any
 ---@return any
@@ -45,6 +52,92 @@ local function mergeDefaults(config, defaults)
     return config
 end
 
+local function loadSavedIcon()
+    local ok, result = pcall(function()
+        if Bastion and Bastion.Require then
+            return Bastion:Require(ICON_REQUIRE_PATH)
+        end
+        return require(ICON_FILE)
+    end)
+
+    if ok and type(result) == "table" then
+        return result.icon
+    end
+
+    if not ok and Bastion and Bastion.Debug then
+        Bastion:Debug("StatusFrame icon load failed:", result)
+    end
+
+    return nil
+end
+
+local function saveIcon(icon)
+    if not icon then
+        return false
+    end
+
+    local code = string.format([[return {
+    icon = %q,
+}
+]], icon)
+
+    local saved = WriteFile(ICON_FILE_PATH, code, false)
+
+    if not saved and Bastion and Bastion.Debug then
+        Bastion:Debug("StatusFrame icon save failed:", icon)
+    end
+
+    return saved
+end
+
+local function loadSavedPosition()
+    local ok, result = pcall(function()
+        if Bastion and Bastion.Require then
+            return Bastion:Require(POSITION_REQUIRE_PATH)
+        end
+        return require(POSITION_FILE)
+    end)
+
+    if ok and type(result) == "table" then
+        return {
+            point = result.point or "CENTER",
+            relative = result.relative or "UIParent",
+            relativePoint = result.relativePoint or "CENTER",
+            x = result.x or 0,
+            y = result.y or 0
+        }
+    end
+
+    if not ok and Bastion and Bastion.Debug then
+        Bastion:Debug("StatusFrame position load failed:", result)
+    end
+
+    return nil
+end
+
+local function savePosition(pos)
+    if not pos then
+        return false
+    end
+
+    local code = string.format([[return {
+    point = %q,
+    relative = "UIParent",
+    relativePoint = %q,
+    x = %f,
+    y = %f,
+}
+]], pos.point, pos.relativePoint, pos.x, pos.y)
+
+    local saved = WriteFile(POSITION_FILE_PATH, code, false)
+
+    if not saved and Bastion and Bastion.Debug then
+        Bastion:Debug("StatusFrame position save failed:", pos.point, pos.relativePoint, pos.x, pos.y)
+    end
+
+    return saved
+end
+
 -- Constructor
 ---@param config? table
 ---@return StatusFrame
@@ -53,6 +146,22 @@ function StatusFrame:New(config)
     
     self.config = config and deepCopy(config) or {}
     self:MergeConfig(DEFAULT_CONFIG)
+
+    local savedPos = loadSavedPosition()
+    if savedPos then
+        self.config.position = {
+            point = savedPos.point,
+            relativePoint = savedPos.relativePoint,
+            x = savedPos.x,
+            y = savedPos.y
+        }
+    end
+
+    local savedIcon = loadSavedIcon()
+    if savedIcon then
+        self.config.icon = savedIcon
+    end
+
     self.enabled = true
     self.modulesRef = {}
     
@@ -79,7 +188,7 @@ function StatusFrame:CreateFrame()
     self.frame:SetPoint(
         self.config.position.point,
         UIParent,
-        self.config.position.point,
+        self.config.position.relativePoint or self.config.position.point,
         self.config.position.x,
         self.config.position.y
     )
@@ -100,7 +209,23 @@ function StatusFrame:SetupDragging()
     self.frame:EnableMouse(true)
     self.frame:RegisterForDrag("LeftButton")
     self.frame:SetScript("OnDragStart", self.frame.StartMoving)
-    self.frame:SetScript("OnDragStop", self.frame.StopMovingOrSizing)
+    self.frame:SetScript("OnDragStop", function(frame)
+        frame:StopMovingOrSizing()
+
+        local point, _, relativePoint, x, y = frame:GetPoint()
+        self.config.position = {
+            point = point,
+            relativePoint = relativePoint,
+            x = x,
+            y = y
+        }
+        savePosition({
+            point = point,
+            relativePoint = relativePoint,
+            x = x,
+            y = y
+        })
+    end)
 end
 
 -- Enable the status frame logic and visuals
@@ -224,6 +349,7 @@ end
 function StatusFrame:SetIcon(icon)
     self.config.icon = icon
     self.texture:SetTexture(icon)
+    saveIcon(icon)
 end
 
 -- Set position
@@ -232,9 +358,15 @@ end
 ---@param y number
 ---@return nil
 function StatusFrame:SetPosition(point, x, y)
-    self.config.position = { point = point, x = x, y = y }
+    self.config.position = { point = point, relativePoint = point, x = x, y = y }
     self.frame:ClearAllPoints()
     self.frame:SetPoint(point, UIParent, point, x, y)
+    savePosition({
+        point = point,
+        relativePoint = point,
+        x = x,
+        y = y
+    })
 end
 
 -- Set size
