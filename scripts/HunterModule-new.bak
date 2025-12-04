@@ -738,7 +738,6 @@ HunterModule:Sync(function()
     if HERUI.Simple() then
         DefaultSPAPL:Execute()
     end
-
     -- local pending = IsSpellPending()
     -- print(pending)
     -- if not Player:InMelee(Target) or not Player:IsBehind(Target) then
