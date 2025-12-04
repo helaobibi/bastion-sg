@@ -402,6 +402,7 @@ HunterModule:Sync(function()
     if Player:IsAffectingCombat() and HERUI.AutoTarget() then
         CheckAndSetTarget()
     end
+    
     if HERUI.AOE() then
         AoEAPL:Execute()
     end
