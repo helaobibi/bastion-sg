@@ -127,6 +127,42 @@ local ExecuteTarget = Bastion.UnitManager:CreateCustomUnit('executetarget', func
     return executeTarget or Bastion.UnitManager:Get('none')
 end)
 
+-- 通过 Bastion.Globals.HERUI 读取 UI 状态，兼容非全局导出
+local function createUIAccessor(name, default)
+    return function()
+        local api = Bastion.Globals and Bastion.Globals.HERUI
+        if api then
+            local getter = api[name]
+            if type(getter) == "function" then
+                return getter()
+            end
+            if api.State then
+                local state = api:State(name)
+                if state ~= nil then
+                    return state
+                end
+            end
+        end
+        return default
+    end
+end
+
+local HERUI = {
+    ExplosiveTrap = createUIAccessor("ExplosiveTrap", true),
+    BlackArrow = createUIAccessor("BlackArrow", false),
+    Normal = createUIAccessor("Normal", true),
+    Simple = createUIAccessor("Simple", false),
+    AimedShot = createUIAccessor("AimedShot", false),
+    MultiShot = createUIAccessor("MultiShot", true),
+    PetAttack = createUIAccessor("PetAttack", true),
+    PetFollow = createUIAccessor("PetFollow", false),
+    ViperSting = createUIAccessor("ViperSting", false),
+    AOE = createUIAccessor("AOE", false),
+    AOEAuto = createUIAccessor("AOEAuto", false),
+    AutoTarget = createUIAccessor("AutoTarget", true),
+    Growl = createUIAccessor("Growl", true)
+}
+
 -- ===================== APL定义 =====================
 local DefaultAPL = Bastion.APL:New('default')         -- 默认输出循环
 local DefensiveAPL = Bastion.APL:New('defensive')     -- 防御循环
@@ -260,7 +296,7 @@ PetControlAPL:AddAction("PetAttack", function()
     if Pet:Exists() and Pet:IsAlive()
         and not PetTarget:Exists()
         and Pet:GetHP() > 75
-        and HERUIPetAttack()
+        and HERUI.PetAttack()
         and Target:IsAlive()
         and Target:Exists() then
         PetAttack()
@@ -273,7 +309,7 @@ end)
 PetControlAPL:AddAction("PetFollow", function()
     if Pet:Exists() and Pet:IsAlive()
         and PetTarget:Exists()
-        and (HERUIPetFollow() or Pet:GetHP() < 75) then
+        and (HERUI.PetFollow() or Pet:GetHP() < 75) then
         PetFollow()
         return true
     end
@@ -341,7 +377,7 @@ AoEAPL:AddSpell(
 --             and not Player:IsChanneling()
 --             and Target:IsAlive()
 --             and Target:IsEnemy()
---             and HERUIExplosiveTrap()
+--             and HERUI.ExplosiveTrap()
 --     end):SetTarget(Target):PreCast(function(self)
 --         -- 检查是否正在读条稳固射击，如果是则停止施法
 --         if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
@@ -394,7 +430,7 @@ AoEAPL:AddSpell(
             and not Player:IsChanneling()
             and Target:IsAlive()
             and Target:IsEnemy()
-            and HERUIExplosiveTrap()
+            and HERUI.ExplosiveTrap()
     end):SetTarget(Target):PreCast(function(self)
         -- 检查是否正在读条稳固射击，如果是则停止施法
         if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
@@ -466,7 +502,7 @@ DefaultAPL:AddSpell(
             and not Player:IsCastingOrChanneling()
             and Target:IsAlive()
             and Target:IsEnemy()
-            and HERUIExplosiveTrap()) then
+            and HERUI.ExplosiveTrap()) then
             return false
         end
 
@@ -536,7 +572,7 @@ DefaultAPL:AddSpell(
         return Target:Exists()
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
-			and HERUIBlackArrow()
+			and HERUI.BlackArrow()
     end):SetTarget(Target)
 )
 
@@ -548,7 +584,7 @@ DefaultAPL:AddSpell(
             and self:IsKnownAndUsable()
             and Target:GetAuras():FindMy(Serpent):GetRemainingTime() < 3
             and ExplosiveShot:GetCooldownRemaining() > 0.5
-            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUIExplosiveTrap() == false)
+            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
     end):SetTarget(Target)
 )
 
@@ -558,9 +594,9 @@ DefaultAPL:AddSpell(
         return Target:Exists()
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
-			and HERUIMultiShot()
+			and HERUI.MultiShot()
 			and ExplosiveShot:GetCooldownRemaining() > 0.5
-			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUIExplosiveTrap() == false)
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
     end):SetTarget(Target)
 )
 
@@ -570,9 +606,9 @@ DefaultAPL:AddSpell(
         return Target:Exists()
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
-			and HERUIAimedShot()
+			and HERUI.AimedShot()
 			and ExplosiveShot:GetCooldownRemaining() > 0.5
-			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUIExplosiveTrap() == false)
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
     end):SetTarget(Target)
 )
 
@@ -584,7 +620,7 @@ DefaultAPL:AddSpell(
             and self:IsKnownAndUsable()
             and not Target:GetAuras():FindAny(HuntersMark):IsUp()
 			and ExplosiveShot:GetCooldownRemaining() > 0.5
-			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUIExplosiveTrap() == false)
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
 			and MultiShot:GetCooldownRemaining() > 0.5
     end):SetTarget(Target)
 )
@@ -593,7 +629,7 @@ DefaultAPL:AddSpell(
 DefaultAPL:AddSpell(
     SteadyShot:CastableIf(function(self)
         return ExplosiveShot:GetCooldownRemaining() > 0.5
-            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUIExplosiveTrap() == false)
+            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
             and AimedShot:GetCooldownRemaining() > 0.5
             and Target:Exists()
             and Target:IsAlive()
@@ -639,7 +675,7 @@ DefaultSPAPL:AddSpell(
             and Target:Exists()
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
-			and HERUIMultiShot()
+			and HERUI.MultiShot()
     end):SetTarget(Target)
 )
 
@@ -650,7 +686,7 @@ DefaultSPAPL:AddSpell(
             and Target:Exists()
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
-			and HERUIAimedShot()
+			and HERUI.AimedShot()
     end):SetTarget(Target)
 )
 
@@ -682,10 +718,10 @@ HunterModule:Sync(function()
     end
 
     -- 强制蝰蛇模式
-    if HERUIViperSting() then
+    if HERUI.ViperSting() then
         ResourceAPL2:Execute()
     end
-    if not HERUIViperSting() then
+    if not HERUI.ViperSting() then
         ResourceAPL:Execute()
     end
 
@@ -693,13 +729,13 @@ HunterModule:Sync(function()
     if Player:IsAffectingCombat() then
         CheckAndSetTarget()
     end
-    if HERUIAOE() then
+    if HERUI.AOE() then
         AoEAPL:Execute()
     end
-    if HERUINormal() then
+    if HERUI.Normal() then
         DefaultAPL:Execute()
     end
-    if HERUISimple() then
+    if HERUI.Simple() then
         DefaultSPAPL:Execute()
     end
 
