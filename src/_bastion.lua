@@ -151,7 +151,8 @@ function Bastion.Bootstrap()
 
     -- 初始化法术引用
     local TranquilizingShot = Bastion.Globals.SpellBook:GetSpell(19801)  -- 宁神射击
-    local Frenzy = Bastion.Globals.SpellBook:GetSpell(72143)  -- 激怒
+    local Frenzy = Bastion.Globals.SpellBook:GetSpell(72143)  -- 激怒（原有检测）
+    local Enrage = Bastion.Globals.SpellBook:GetSpell(19451)  -- 激怒（新增检测）
 
     -- 初始化战斗日志相关变量
     local pguid = UnitGUID("player")
@@ -233,7 +234,7 @@ function Bastion.Bootstrap()
             and Focus:Exists()
             and Focus:IsAlive()
             and Focus:IsEnemy()
-            and Focus:GetAuras():FindAny(Frenzy):IsUp()
+            and (Focus:GetAuras():FindAny(Frenzy):IsUp() or Focus:GetAuras():FindAny(Enrage):IsUp())
             and TranquilizingShot:IsInRange(Focus)
         then
             if Player:IsCastingOrChanneling() then
