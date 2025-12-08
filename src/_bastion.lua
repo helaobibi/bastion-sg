@@ -237,7 +237,6 @@ function Bastion.Bootstrap()
         end
         local _, class = UnitClass("player")
         if class == "HUNTER"
-            and tranquilRemain
             and tranquilRemain < 0.2
             and not TranquilizingShot:IsOnCooldown()
             and Focus:Exists()
