@@ -228,17 +228,9 @@ function Bastion.Bootstrap()
         end
 
         -- 宁神射击功能（猎人专用，独立于模块系统）
-        local lastCastTime = TranquilizingShot:GetLastCastTime()
-        local tranquilRemain
-        if lastCastTime then
-            tranquilRemain = math.max(8 - (GetTime() - lastCastTime), 0)
-        else
-            tranquilRemain = 0  -- 还没放过时视为随时可用，额外由冷却判断兜底
-        end
         local _, class = UnitClass("player")
         if class == "HUNTER"
-            and tranquilRemain < 0.2
-            and not TranquilizingShot:IsOnCooldown()
+            and TranquilizingShot:GetCooldownRemaining() < 1.5
             and Focus:Exists()
             and Focus:IsAlive()
             and Focus:IsEnemy()
