@@ -14,26 +14,34 @@ local TargetTarget = Bastion.UnitManager:Get('targettarget')
 local SpellBook = Bastion.Globals.SpellBook
 -- 创建物品书
 local ItemBook = Bastion.Globals.ItemBook
+-- 添加新变量来跟踪T键触发的威慑
+local isTKeyIntimidationActive = false
 -- 定义技能
 -- 基础技能
-local MendPet = SpellBook:GetSpell(13544)                  -- 治疗宠物
+local LeechingSwarm = SpellBook:GetSpell(66118)           -- 吸血虫群
+local shalumingling = SpellBook:GetSpell(34026)           -- 杀戮命令
+local MendPet = SpellBook:GetSpell(48989)                 -- 治疗宠物
+local Intimidation = SpellBook:GetSpell(19263)            -- 威慑
+local ConcussiveShot = SpellBook:GetSpell(5116)           -- 震荡射击
+local FrostTrap = SpellBook:GetSpell(13809)               -- 冰霜陷阱
+local HolyWrath = SpellBook:GetSpell(48817)               -- 神圣愤怒
+local HammerOfJustice = SpellBook:GetSpell(10308)         -- 制裁之锤
 local kuishe = SpellBook:GetSpell(34074)                  -- 蝰蛇守护
-local AimedShot = SpellBook:GetSpell(20904)               -- 瞄准射击
-local Serpent = SpellBook:GetSpell(25295)                 -- 毒蛇钉刺
-local HuntersMark = SpellBook:GetSpell(14325)             -- 猎人印记
+local longying = SpellBook:GetSpell(61846)                -- 龙鹰守护
+local TrapSpell = SpellBook:GetSpell(425777)              -- 爆炸陷阱
+local MultiShotSpell = SpellBook:GetSpell(58431)          -- 乱射范围技能
+local KillShot = SpellBook:GetSpell(61005)                -- 杀戮射击
+local SteadyShot = SpellBook:GetSpell(49052)              -- 稳固射击
+local ExplosiveShot = SpellBook:GetSpell(60052)           -- 爆炸射击（4级）
+local ExplosiveShott = SpellBook:GetSpell(60051)          -- 爆炸射击（3级）
+local BlackArrow = SpellBook:GetSpell(63671)              -- 黑箭
+local AimedShot = SpellBook:GetSpell(49049)               -- 瞄准射击
+local MultiShot = SpellBook:GetSpell(49047)               -- 多重射击
+local Serpent = SpellBook:GetSpell(49000)                 -- 毒蛇钉刺
+local HuntersMark = SpellBook:GetSpell(53338)             -- 猎人印记
+local heqiang = SpellBook:GetSpell(56453)                 -- 荷枪实弹
 local Cower = SpellBook:GetSpell(1742)                    -- 畏缩
 local FeignDeath = SpellBook:GetSpell(5384)               -- 假死
-local AutoShot = SpellBook:GetSpell(75)                   -- 自动射击
-local Growl = SpellBook:GetSpell(14921)                   -- 低吼
-local AspectOfTheHawk = SpellBook:GetSpell(25296)         -- 雄鹰守护
-local ArcaneShot = SpellBook:GetSpell(14287)              -- 奥术射击
-local SteadyShot = SpellBook:GetSpell(34120)              -- 稳固射击
--- AOE技能
-local MultiShotSpell = SpellBook:GetSpell(27022)           -- 乱射
--- 宠物技能
-local ShellShield = SpellBook:GetSpell(26064)             -- 甲壳护盾
-local Intimidation = SpellBook:GetSpell(19577)            -- 胁迫
-local Bite = SpellBook:GetSpell(27050)                    -- 撕咬
 
 -- 寻找最佳目标
 local BestTarget = Bastion.UnitManager:CreateCustomUnit('besttarget', function()
@@ -42,19 +50,14 @@ local BestTarget = Bastion.UnitManager:CreateCustomUnit('besttarget', function()
 
     -- 遍历所有敌人，寻找最适合的目标
     Bastion.ObjectManager.enemies:each(function(unit)
-        -- 获取unit的目标
-        local unitTarget = unit:GetTarget()
-        -- 检查unit的目标是否是player或pet
-        local isTargetingPlayerOrPet = (unitTarget:Exists() and (unitTarget:IsUnit(Player) or (Pet:Exists() and unitTarget:IsUnit(Pet))))
-        
         -- 检查目标是否符合条件：
         -- 1. 正在战斗中
         -- 2. 在35码范围内
         -- 3. 玩家可以看见该目标
         -- 4. 目标距离玩家至少5码
         -- 5. 玩家面向该目标
-        -- 6. unit的目标必须是player或pet
-        if unit:IsAffectingCombat() and Player:CanSee(unit) and unit:IsAlive() and unit:Exists() and Player:IsFacing(unit) and isTargetingPlayerOrPet then
+        if unit:IsAffectingCombat() and ExplosiveShot:IsInRange(unit)
+        and Player:CanSee(unit) and unit:IsAlive() and unit:Exists() and Player:IsFacing(unit) then
             -- 如果没有最佳目标或当前单位血量更高
             if unit:GetHealth() > highestHealth then
                 highestHealth = unit:GetHealth()
@@ -67,29 +70,6 @@ local BestTarget = Bastion.UnitManager:CreateCustomUnit('besttarget', function()
     return bestTarget or Bastion.UnitManager:Get('none')
 end)
 
--- 通过 Bastion.Globals.HERUI 读取 UI 状态，避免使用全局函数污染环境
-local function createUIAccessor(name, default)
-    return function()
-        local api = Bastion.Globals and Bastion.Globals.HERUI
-        if api and api[name] then
-            return api[name]()
-        end
-        return default
-    end
-end
-
-local HERUI = {
-    PetAttack = createUIAccessor("PetAttack", true),
-    PetFollow = createUIAccessor("PetFollow", false),
-    Growl = createUIAccessor("Growl", true),
-    ViperSting = createUIAccessor("ViperSting", false),
-    AutoTarget = createUIAccessor("AutoTarget", true),
-    AOE = createUIAccessor("AOE", false),
-    AOEAuto = createUIAccessor("AOEAuto", false),
-    Normal = createUIAccessor("Normal", true),
-    Simple = createUIAccessor("Simple", false)
-}
-
 -- 选择目标
 local function CheckAndSetTarget()
     if not Target:Exists() or Target:IsFriendly() or not Target:IsAlive() then
@@ -101,6 +81,87 @@ local function CheckAndSetTarget()
     end
     return false
 end
+
+-- 检查目标是否为艾蒂丝、菲奥拉、小宝或大臭
+local function IsTargetBoss()
+    return Bastion.ObjectManager.enemies:find(function(unit)
+        local name = unit:GetName()
+        return name
+            and (
+                string.find(name, "艾蒂丝")
+                or string.find(name, "菲奥拉")
+                or string.find(name, "小宝")
+                or string.find(name, "大臭")
+            )
+    end) ~= nil
+end
+
+-- 寻找可斩杀目标（生命值低于20%）
+local ExecuteTarget = Bastion.UnitManager:CreateCustomUnit('executetarget', function()
+    -- 先检查当前目标是否满足条件
+    if Target:IsAlive() 
+        and Target:GetHP() < 20
+        and KillShot:IsInRange(Target) then
+        return Target
+    end
+
+    -- 如果当前目标不满足条件,再查找其他目标
+    local executeTarget = Bastion.ObjectManager.enemies:find(function(unit)
+        local unitName = unit:GetName()
+        return unit:IsAlive()
+            and unit:GetHP() < 20
+            and unit:IsAffectingCombat()
+            and KillShot:IsInRange(unit)
+            and Player:CanSee(unit)
+            and Player:IsFacing(unit)
+            and unitName
+            and not (
+                string.find(unitName, "黑暗之核") or
+                string.find(unitName, "动力炸弹") or
+                string.find(unitName, "瓦拉纳王子") or
+                string.find(unitName, "塔达拉姆王子") or
+                string.find(unitName, "凯雷塞斯王子")
+            )
+    end)
+
+    return executeTarget or Bastion.UnitManager:Get('none')
+end)
+
+-- 通过 Bastion.Globals.HERUI 读取 UI 状态，兼容非全局导出
+local function createUIAccessor(name, default)
+    return function()
+        local api = Bastion.Globals and Bastion.Globals.HERUI
+        if api then
+            local getter = api[name]
+            if type(getter) == "function" then
+                return getter()
+            end
+            if api.State then
+                local state = api:State(name)
+                if state ~= nil then
+                    return state
+                end
+            end
+        end
+        return default
+    end
+end
+
+local HERUI = {
+    ExplosiveTrap = createUIAccessor("ExplosiveTrap", true),
+    BlackArrow = createUIAccessor("BlackArrow", false),
+    Normal = createUIAccessor("Normal", true),
+    Simple = createUIAccessor("Simple", false),
+    AimedShot = createUIAccessor("AimedShot", false),
+    MultiShot = createUIAccessor("MultiShot", true),
+    PetAttack = createUIAccessor("PetAttack", true),
+    PetFollow = createUIAccessor("PetFollow", false),
+    ViperSting = createUIAccessor("ViperSting", false),
+    AOE = createUIAccessor("AOE", false),
+    AOEAuto = createUIAccessor("AOEAuto", false),
+    AutoTarget = createUIAccessor("AutoTarget", true),
+    Growl = createUIAccessor("Growl", true)
+}
 
 -- ===================== APL定义 =====================
 local DefaultAPL = Bastion.APL:New('default')         -- 默认输出循环
@@ -137,18 +198,86 @@ DefensiveAPL:AddSpell(
     end)
 )
 
--- 胁迫
+-- 威慑（原有逻辑）
 DefensiveAPL:AddSpell(
     Intimidation:CastableIf(function(self)
-        return GetKeyState(58)  -- 按下左Option键时释放
-            and Target:Exists()
-            and Target:IsAlive()
-            and not self:IsOnCooldown()
-    end):SetTarget(Target):PreCast(function(self)
+        return Player:GetHP() <= 30 and
+               not self:IsOnCooldown() and
+               Player:IsAffectingCombat() and
+               not Player:GetAuras():FindAny(LeechingSwarm):IsUp() and
+               not IsTargetBoss() and
+               not GetKeyState(17) -- 不在按T键时才使用原有逻辑
+    end):SetTarget(Player):PreCast(function(self)
         if Player:IsCastingOrChanneling() then
-            SpellStopCasting()  -- 打断当前施法
+            SpellStopCasting()
         end
     end)
+)
+
+-- 威慑（按T键触发）
+DefensiveAPL:AddSpell(
+    Intimidation:CastableIf(function(self)
+        return GetKeyState(17) and -- 按下T键时释放
+               not Player:GetAuras():FindMy(Intimidation):IsUp() -- 没有威慑buff
+    end):SetTarget(Player):PreCast(function(self)
+        if Player:IsCastingOrChanneling() then
+            SpellStopCasting() -- 打断当前施法
+        end
+    end):OnCast(function(self)
+        -- 标记这是T键触发的威慑
+        isTKeyIntimidationActive = true
+    end)
+)
+
+-- 取消威慑（松开T键时）
+DefensiveAPL:AddAction("CancelTKeyIntimidation", function()
+    if isTKeyIntimidationActive then
+        -- T键触发的威慑，按原有逻辑处理
+        if not GetKeyState(17) and Player:GetAuras():FindMy(Intimidation):IsUp() then
+            CancelSpellByName("威慑")
+            isTKeyIntimidationActive = false
+            return true
+        end
+    else
+        -- 非T键触发的威慑，血量大于等于80%时取消
+        if not GetKeyState(17) and Player:GetHP() >= 80 and Player:GetAuras():FindMy(Intimidation):IsUp() then
+            CancelSpellByName("威慑")
+            return true
+        end
+    end
+    return false
+end)
+
+-- 杀戮命令
+DefensiveAPL:AddSpell(
+    shalumingling:CastableIf(function(self)
+        return Pet:IsAlive()
+            and Pet:Exists()
+            and Target:Exists()
+		    and Target:IsAlive()
+            and Target:IsEnemy()
+            and self:GetCooldownRemaining() < 1.5
+            and Player:IsAffectingCombat()
+            and not Player:IsChanneling()
+    end):SetTarget(Target)
+)
+
+-- 震荡射击
+DefensiveAPL:AddSpell(
+    ConcussiveShot:CastableIf(function(self)
+        return Target:Exists()
+            and Target:IsAlive()
+            and Target:IsEnemy()
+            and self:GetCooldownRemaining() < 1.5
+            and self:IsInRange(Target)
+            and not Target:GetAuras():FindAny(ConcussiveShot):IsUp()
+            and not Target:GetAuras():FindAny(FrostTrap):IsUp()
+            and not Target:GetAuras():FindAny(HolyWrath):IsUp()
+            and not Target:GetAuras():FindAny(HammerOfJustice):IsUp()
+            and not Player:IsChanneling()
+            and ((string.find(Target:GetName(), "瓦格里暗影戒卫者") or string.find(Target:GetName(), "脓疮僵尸"))
+                or (TargetTarget:Exists() and Player:IsUnit(TargetTarget) and string.find(Target:GetName(), "灵魂戒卫")))
+    end):SetTarget(Target)
 )
 
 -- 畏缩
@@ -165,10 +294,11 @@ PetControlAPL:AddSpell(
 -- 宠物攻击
 PetControlAPL:AddAction("PetAttack", function()
     if Pet:Exists() and Pet:IsAlive()
-        and Target:Exists()
-        and Target:IsAlive()
+        and not PetTarget:Exists()
+        and Pet:GetHP() > 75
         and HERUI.PetAttack()
-        and (not PetTarget:Exists() or not PetTarget:IsUnit(Target)) then
+        and Target:IsAlive()
+        and Target:Exists() then
         PetAttack()
         return true
     end
@@ -179,8 +309,7 @@ end)
 PetControlAPL:AddAction("PetFollow", function()
     if Pet:Exists() and Pet:IsAlive()
         and PetTarget:Exists()
-        and HERUI.PetFollow() then
-        -- and (HERUI.PetFollow() or Pet:GetHP() < 75) then
+        and (HERUI.PetFollow() or Pet:GetHP() < 75) then
         PetFollow()
         return true
     end
@@ -192,53 +321,138 @@ PetControlAPL:AddSpell(
     MendPet:CastableIf(function(self)
         return Pet:Exists()
             and Pet:IsAlive()
-            and Pet:GetHP() < 50
+            and Pet:GetHP() < 75
             and Player:IsAffectingCombat()
             and not Pet:GetAuras():FindAny(MendPet):IsUp()
             and not Player:IsChanneling()
-            and self:IsKnownAndUsable()
     end):SetTarget(Pet)
 )
 
--- 低吼（宠物嘲讽）
-PetControlAPL:AddSpell(
-    Growl:CastableIf(function(self)
-        return Pet:Exists()
-        and Pet:IsAlive()
-        and Target:Exists()
-        and Target:IsAlive()
-        and Player:IsAffectingCombat()
-            and HERUI.Growl()
-            and not self:IsOnCooldown()
-            and Pet:GetPower() >= 15
-    end):SetTarget(Target)
+-- ===================== 资源管理循环 =====================
+-- 守护切换
+-- 蝰蛇
+ResourceAPL:AddSpell(
+    kuishe:CastableIf(function(self)
+        return Player:GetPP() <= 7 and
+               not Player:GetAuras():FindMy(kuishe):IsUp() and
+               Player:IsAffectingCombat()
+    end):SetTarget(Player)
 )
 
--- 撕咬
-PetControlAPL:AddSpell(
-    Bite:CastableIf(function(self)
-        return Pet:Exists()
-            and Pet:IsAlive()
-            and Target:Exists()
-            and Target:IsAlive()
-            and Player:IsAffectingCombat()
-            and not self:IsOnCooldown()
-            and Pet:GetPower() > 40
-    end):SetTarget(Target)
+-- 龙鹰
+ResourceAPL:AddSpell(
+    longying:CastableIf(function(self)
+        return Player:GetPP() >= 50 and
+               not Player:GetAuras():FindMy(longying):IsUp() and
+               Player:IsAffectingCombat()
+    end):SetTarget(Player)
 )
 
--- 甲壳护盾
-PetControlAPL:AddSpell(
-    ShellShield:CastableIf(function(self)
-        return Pet:Exists()
-            and Pet:IsAlive()
-            and Pet:GetHP() < 50
-            and Player:IsAffectingCombat()
-            and not self:IsOnCooldown()
-    end):SetTarget(Pet)
+-- 资源管理循环2
+-- 蝰蛇
+ResourceAPL2:AddSpell(
+    kuishe:CastableIf(function(self)
+        return not Player:GetAuras():FindMy(kuishe):IsUp()
+               and Player:IsAffectingCombat()
+    end):SetTarget(Player)
 )
 
 -- ===================== AOE循环 =====================
+-- AOE循环技能序列
+-- 斩杀射击（斩杀阶段使用）
+AoEAPL:AddSpell(
+    KillShot:CastableIf(function(self)
+        return self:GetCooldownRemaining() < 1.5 and
+               ExecuteTarget:Exists() and
+               not Player:IsChanneling() and
+               Player:IsAffectingCombat()
+    end):SetTarget(ExecuteTarget)
+)
+
+-- -- 爆炸陷阱
+-- AoEAPL:AddSpell(
+--     TrapSpell:CastableIf(function(self)
+--         return Target:Exists()
+--             and self:IsKnownAndUsable()
+--             and not Player:IsChanneling()
+--             and Target:IsAlive()
+--             and Target:IsEnemy()
+--             and HERUI.ExplosiveTrap()
+--     end):SetTarget(Target):PreCast(function(self)
+--         -- 检查是否正在读条稳固射击，如果是则停止施法
+--         if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
+--             SpellStopCasting()
+--         end
+--     end):OnCast(function(self)
+--         local distance = Target:GetDistance(Player)
+--         local position
+        
+--         if distance < 40 then
+--             -- 距离40码内，直接使用目标位置
+--             position = Target:GetPosition()
+--         else
+--             -- 距离40码外，计算向玩家方向退的位置
+--             local playerPos = Player:GetPosition()
+--             local targetPos = Target:GetPosition()
+--             local direction = (targetPos - playerPos):Normalize()
+--             position = targetPos - direction * math.floor(Target:GetCombatReach() / 3)
+--         end
+        
+--         self:Click(position)
+--     end)
+-- )
+
+-- -- 乱射(直接使用目标坐标)
+-- AoEAPL:AddSpell(
+--     MultiShotSpell:CastableIf(function(self)
+--         return Target:Exists()
+--             and not Player:IsChanneling()
+--             and Target:IsAlive()
+--             and Target:IsEnemy()
+--             and Target:GetDistance(Player) <= 35
+--             and TrapSpell:GetCooldownRemaining() > 1.1
+--     end):SetTarget(Target):PreCast(function(self)
+--         -- 检查是否正在读条稳固射击，如果是则停止施法
+--         if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
+--             SpellStopCasting()
+--         end
+--     end):OnCast(function(self)
+--         local position = Target:GetPosition()
+--         self:Click(position)
+--     end)
+-- )
+
+-- 爆炸陷阱
+AoEAPL:AddSpell(
+    TrapSpell:CastableIf(function(self)
+        return Target:Exists()
+            and self:IsKnownAndUsable()
+            and not Player:IsChanneling()
+            and Target:IsAlive()
+            and Target:IsEnemy()
+            and HERUI.ExplosiveTrap()
+    end):SetTarget(Target):PreCast(function(self)
+        -- 检查是否正在读条稳固射击，如果是则停止施法
+        if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
+            SpellStopCasting()
+        end
+    end):OnCast(function(self)
+        -- 使用GetEnemyClosestToCentroid函数找到最密集敌人群中最接近质心的敌人
+        -- 参数：半径10码，范围40码，最少需要3个敌人才使用质心定位
+        local centralEnemy = Bastion.UnitManager:GetEnemyClosestToCentroid(10, 40, 3)
+        local position
+
+        if centralEnemy then
+            position = centralEnemy:GetPosition()
+        else
+            -- 如果没有找到足够密集的敌人群（少于3个敌人），退回到目标位置
+            position = Target:GetPosition()
+        end
+
+        self:Click(position)
+    end)
+)
+
 -- 乱射(使用敌人群质心坐标)
 AoEAPL:AddSpell(
     MultiShotSpell:CastableIf(function(self)
@@ -247,7 +461,13 @@ AoEAPL:AddSpell(
             and Target:IsAlive()
             and Target:IsEnemy()
             and Target:GetDistance(Player) <= 35
-    end):SetTarget(Target):OnCast(function(self)
+            and TrapSpell:GetCooldownRemaining() > 1.1
+    end):SetTarget(Target):PreCast(function(self)
+        -- 检查是否正在读条稳固射击，如果是则停止施法
+        if Player:IsCastingOrChanneling() and Player:GetCastingOrChannelingSpell():GetID() == 49052 then
+            SpellStopCasting()
+        end
+    end):OnCast(function(self)
         -- 使用FindEnemiesCentroid函数找到敌人群的质心位置
         -- 参数：半径8码，范围35码，最少需要2个敌人才使用乱射
         local centroid = Bastion.UnitManager:FindEnemiesCentroid(8, 35, 2)
@@ -264,36 +484,134 @@ AoEAPL:AddSpell(
     end)
 )
 
--- ===================== 资源管理循环 =====================
--- 守护切换
--- 蝰蛇
-ResourceAPL:AddSpell(
-    kuishe:CastableIf(function(self)
-        return Player:GetPP() <= 15 and
-               not Player:GetAuras():FindMy(kuishe):IsUp() and
-               Player:IsAffectingCombat()
-    end):SetTarget(Player)
-)
-
--- 雄鹰
-ResourceAPL:AddSpell(
-    AspectOfTheHawk:CastableIf(function(self)
-        return Player:GetPP() >= 65 and
-               not Player:GetAuras():FindMy(AspectOfTheHawk):IsUp() and
-               Player:IsAffectingCombat()
-    end):SetTarget(Player)
-)
-
--- 资源管理循环2
--- 蝰蛇
-ResourceAPL2:AddSpell(
-    kuishe:CastableIf(function(self)
-        return not Player:GetAuras():FindMy(kuishe):IsUp()
-               and Player:IsAffectingCombat()
-    end):SetTarget(Player)
-)
-
 -- ===================== 默认循环 =====================
+-- 斩杀射击（斩杀阶段使用）
+DefaultAPL:AddSpell(
+    KillShot:CastableIf(function(self)
+        return self:GetCooldownRemaining() < 1.5 and
+               ExecuteTarget:Exists() and
+               Player:IsAffectingCombat()
+    end):SetTarget(ExecuteTarget)
+)
+
+-- 爆炸陷阱
+DefaultAPL:AddSpell(
+    TrapSpell:CastableIf(function(self)
+        if not (Target:Exists()
+            and self:IsKnownAndUsable()
+            and not Player:IsCastingOrChanneling()
+            and Target:IsAlive()
+            and Target:IsEnemy()
+            and HERUI.ExplosiveTrap()) then
+            return false
+        end
+
+        -- 检查距离限制，确保最终位置不超过40码
+        local distance = Target:GetDistance(Player)
+        if distance <= 40 then
+            return true
+        else
+            -- 距离超过40码时，计算向玩家方向退的位置是否在40码内
+            local playerPos = Player:GetPosition()
+            local targetPos = Target:GetPosition()
+            if not playerPos or not targetPos then
+                return false
+            end
+
+            local direction = (targetPos - playerPos):Normalize()
+            local retreatDistance = math.floor(Target:GetCombatReach() / 4)
+            local calculatedPosition = targetPos - direction * retreatDistance
+            local finalDistance = calculatedPosition:Distance(playerPos)
+
+            -- 只有当计算后的位置在40码内才允许释放
+            return finalDistance <= 40
+        end
+    end):SetTarget(Target):OnCast(function(self)
+        local distance = Target:GetDistance(Player)
+        local position
+
+        if distance <= 40 then
+            -- 距离40码内，直接使用目标位置
+            position = Target:GetPosition()
+        else
+            -- 距离40码外，计算向玩家方向退的位置
+            local playerPos = Player:GetPosition()
+            local targetPos = Target:GetPosition()
+            local direction = (targetPos - playerPos):Normalize()
+            local retreatDistance = math.floor(Target:GetCombatReach() / 4)
+            position = targetPos - direction * retreatDistance
+        end
+
+        self:Click(position)
+    end)
+)
+
+-- 爆炸射击4
+DefaultAPL:AddSpell(
+    ExplosiveShot:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and (Player:GetAuras():FindMy(heqiang):GetCount() == 2 or Player:GetAuras():FindMy(heqiang):GetCount() == 0)
+    end):SetTarget(Target)
+)
+
+-- 爆炸射击3
+DefaultAPL:AddSpell(
+    ExplosiveShott:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and Player:GetAuras():FindMy(heqiang):GetCount() == 1
+    end):SetTarget(Target)
+)
+
+-- 黑箭
+DefaultAPL:AddSpell(
+    BlackArrow:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and HERUI.BlackArrow()
+    end):SetTarget(Target)
+)
+
+-- 毒蛇钉刺
+DefaultAPL:AddSpell(
+    Serpent:CastableIf(function(self)
+        return Target:Exists()
+            and Target:IsAlive()
+            and self:IsKnownAndUsable()
+            and Target:GetAuras():FindMy(Serpent):GetRemainingTime() < 3
+            and ExplosiveShot:GetCooldownRemaining() > 0.5
+            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
+    end):SetTarget(Target)
+)
+
+-- 多重射击
+DefaultAPL:AddSpell(
+    MultiShot:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and HERUI.MultiShot()
+			and ExplosiveShot:GetCooldownRemaining() > 0.5
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
+    end):SetTarget(Target)
+)
+
+-- 瞄准射击
+DefaultAPL:AddSpell(
+    AimedShot:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and HERUI.AimedShot()
+			and ExplosiveShot:GetCooldownRemaining() > 0.5
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
+    end):SetTarget(Target)
+)
+
 -- 猎人印记
 DefaultAPL:AddSpell(
     HuntersMark:CastableIf(function(self)
@@ -301,92 +619,101 @@ DefaultAPL:AddSpell(
 		    and Target:IsAlive()
             and self:IsKnownAndUsable()
             and not Target:GetAuras():FindAny(HuntersMark):IsUp()
+			and ExplosiveShot:GetCooldownRemaining() > 0.5
+			and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
+			and MultiShot:GetCooldownRemaining() > 0.5
     end):SetTarget(Target)
 )
 
--- -- 毒蛇钉刺
--- DefaultAPL:AddSpell(
---     Serpent:CastableIf(function(self)
---         return Target:Exists()
---             and Target:IsAlive()
---             and Target:GetHP() >= 20  -- 目标血量大于20%才上DOT
---             and self:IsKnownAndUsable()
---             and not Target:GetAuras():FindMy(Serpent):IsUp()
---     end):SetTarget(Target)
--- )
-
--- 瞄准射击
--- DefaultAPL:AddSpell(
---     AimedShot:CastableIf(function(self)
---         return Target:Exists()
--- 		    and Target:IsAlive()
---             and self:IsKnownAndUsable()
---     end):SetTarget(Target)
--- )
-
--- 奥术射击
+-- 稳固射击（基础填充技能）
 DefaultAPL:AddSpell(
-    ArcaneShot:CastableIf(function(self)
-        return Target:Exists()
+    SteadyShot:CastableIf(function(self)
+        return ExplosiveShot:GetCooldownRemaining() > 0.5
+            and (TrapSpell:GetCooldownRemaining() > 0.5 or HERUI.ExplosiveTrap() == false)
+            and AimedShot:GetCooldownRemaining() > 0.5
+            and Target:Exists()
             and Target:IsAlive()
             and self:IsKnownAndUsable()
+            and Target:GetAuras():FindMy(Serpent):GetRemainingTime() > 3
     end):SetTarget(Target)
 )
 
--- 稳固射击
-DefaultAPL:AddSpell(
+-- ===================== 简单循环 =====================
+-- 斩杀射击（斩杀阶段使用）
+DefaultSPAPL:AddSpell(
+    KillShot:CastableIf(function(self)
+        return self:GetCooldownRemaining() < 1.5 and
+               ExecuteTarget:Exists() and
+               Player:IsAffectingCombat()
+    end):SetTarget(ExecuteTarget)
+)
+
+-- 爆炸射击4
+DefaultSPAPL:AddSpell(
+    ExplosiveShot:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and (Player:GetAuras():FindMy(heqiang):GetCount() == 2 or Player:GetAuras():FindMy(heqiang):GetCount() == 0)
+    end):SetTarget(Target)
+)
+
+-- 爆炸射击3
+DefaultSPAPL:AddSpell(
+    ExplosiveShott:CastableIf(function(self)
+        return Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and Player:GetAuras():FindMy(heqiang):GetCount() == 1
+    end):SetTarget(Target)
+)
+
+-- 多重射击
+DefaultSPAPL:AddSpell(
+    MultiShot:CastableIf(function(self)
+        return ExplosiveShot:GetCooldownRemaining() > 0.5
+            and Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and HERUI.MultiShot()
+    end):SetTarget(Target)
+)
+
+-- 瞄准射击
+DefaultSPAPL:AddSpell(
+    AimedShot:CastableIf(function(self)
+        return ExplosiveShot:GetCooldownRemaining() > 0.5
+            and Target:Exists()
+		    and Target:IsAlive()
+            and self:IsKnownAndUsable()
+			and HERUI.AimedShot()
+    end):SetTarget(Target)
+)
+
+-- 稳固射击（基础填充技能）
+DefaultSPAPL:AddSpell(
     SteadyShot:CastableIf(function(self)
         return Target:Exists()
             and Target:IsAlive()
             and self:IsKnownAndUsable()
-    end):SetTarget(Target)
-)
-
--- ===================== 简单模式循环 =====================
--- 瞄准射击
--- DefaultSPAPL:AddSpell(
---     AimedShot:CastableIf(function(self)
---         return Target:Exists()
--- 		    and Target:IsAlive()
---             and self:IsKnownAndUsable()
---     end):SetTarget(Target)
--- )
-
--- 奥术射击
-DefaultSPAPL:AddSpell(
-    ArcaneShot:CastableIf(function(self)
-        return Target:Exists()
-            and Target:IsAlive()
-            and self:IsKnownAndUsable()
-    end):SetTarget(Target)
-)
-
--- 稳固射击
-DefaultSPAPL:AddSpell(
-    SteadyShot:CastableIf(function(self)
-        return Target:Exists()
-            and Target:IsAlive()
-            and self:IsKnownAndUsable()
+            and MultiShot:GetCooldownRemaining() > 0.5
+            and ExplosiveShot:GetCooldownRemaining() > 0.5
     end):SetTarget(Target)
 )
 
 -- ===================== 模块同步 =====================
 HunterModule:Sync(function()
+    -- 检查威慑状态，如果没有威慑buff则重置T键状态
+    if isTKeyIntimidationActive and not Player:GetAuras():FindMy(Intimidation):IsUp() then
+        isTKeyIntimidationActive = false
+    end
+
     --最高优先级：防御和资源管理
     DefensiveAPL:Execute()
     PetControlAPL:Execute()
 
     -- 如果按住F键（假死状态）或T键（威慑状态），则不执行其他循环
-    if GetKeyState(3) then
-        return
-    end
-
-    -- 如果targettarget不等于pet，或者target不在战斗中，则返回
-    -- if (TargetTarget:Exists() and Pet:Exists() and not TargetTarget:IsUnit(Pet)) 
-    --     or not Target:IsAffectingCombat() then
-    --     return
-    -- end
-    if Player:IsCastingOrChanneling() then
+    if GetKeyState(3) or GetKeyState(17) then
         return
     end
 
@@ -399,10 +726,9 @@ HunterModule:Sync(function()
     end
 
     -- 战斗中切目标
-    if Player:IsAffectingCombat() and HERUI.AutoTarget() then
+    if Player:IsAffectingCombat() then
         CheckAndSetTarget()
     end
-    
     if HERUI.AOE() then
         AoEAPL:Execute()
     end
@@ -412,5 +738,14 @@ HunterModule:Sync(function()
     if HERUI.Simple() then
         DefaultSPAPL:Execute()
     end
+    -- local pending = IsSpellPending()
+    -- print(pending)
+    -- if not Player:InMelee(Target) or not Player:IsBehind(Target) then
+    --     Target:MoveToTargetBehind()
+    -- end
+    -- if not Player:IsFacing(Target) and not Player:IsMoving() then  -- 只在不移动时调整朝向
+    --     FaceObject('target')
+    -- end
 end)
+-- ===================== 注册模块 =====================
 Bastion:Register(HunterModule)
